@@ -305,13 +305,13 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { 
-            getFirestore, 
             doc, 
             setDoc, 
             getDoc, 
             collection, 
             deleteDoc, 
-            onSnapshot 
+            onSnapshot,
+            initializeFirestore
         } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -320,12 +320,18 @@
             projectId: "gestor-teocratico",
             storageBucket: "gestor-teocratico.firebasestorage.app",
             messagingSenderId: "152274665101",
-            appId: "1:152274665101:web:26eac7c50cbbb196da2cc4",
-            measurementId: "G-WGH3VLX99F"
+            appId: "1:152274665101:web:26eac7c50cbbb196da2cc4"
         };
 
         const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+
+        // CONFIGURACIÓN ESPECIAL: Forzamos la URL global oficial de Firestore.
+        // Esto soluciona de raíz el error de "Database not found" al usar Render o Netlify.
+        const db = initializeFirestore(app, {
+            host: "firestore.googleapis.com",
+            ssl: true,
+            experimentalForceLongPolling: true
+        });
 
         let rolActual = "";
         let listaCongregacion = [];
