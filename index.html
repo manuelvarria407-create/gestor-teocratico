@@ -36,6 +36,10 @@
         .user-badge { background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 4px; font-size: 12px; display: inline-block; margin-top: 5px; }
         .top-controls { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tarjeta); border-bottom: 1px solid var(--borde); }
         
+        .status-firebase { padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .status-firebase.conectado { background: #c6f6d5; color: #22543d; }
+        .status-firebase.desconectado { background: #fed7d7; color: #742a2a; }
+
         nav { display: flex; flex-wrap: wrap; background-color: #2d3748; }
         nav button { flex: 1; min-width: 120px; background: none; border: none; color: #cbd5e0; padding: 12px; cursor: pointer; font-weight: 600; font-size: 14px; }
         nav button.active { background-color: var(--color-botones); color: white; }
@@ -88,8 +92,11 @@
 <body>
 
     <div class="top-controls no-print">
-        <button onclick="alternarModoOscuro()">🌓 Cambiar Modo</button>
-        <button id="btnCerrarSesion" onclick="cerrarSesion()" style="display:none;">🔒 Cerrar Sesión</button>
+        <div>
+            <button onclick="alternarModoOscuro()">🌓 Cambiar Modo</button>
+            <button id="btnCerrarSesion" onclick="cerrarSesion()" style="display:none;">🔒 Cerrar Sesión</button>
+        </div>
+        <div class="status-firebase desconectado" id="statusFirebase">🔴 Conectando a Firebase...</div>
     </div>
 
     <div id="section-login" class="container no-print">
@@ -311,7 +318,7 @@
             collection, 
             deleteDoc, 
             onSnapshot,
-            initializeFirestore
+            getFirestore
         } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -323,39 +330,72 @@
             appId: "1:152274665101:web:26eac7c50cbbb196da2cc4"
         };
 
-        const app = initializeApp(firebaseConfig);
+        let app = null;
+        let db = null;
+        let firebaseConectado = false;
 
-        // CONFIGURACIÓN ESPECIAL: Forzamos la URL global oficial de Firestore.
-        // Esto soluciona de raíz el error de "Database not found" al usar Render o Netlify.
-        const db = initializeFirestore(app, {
-            host: "firestore.googleapis.com",
-            ssl: true,
-            experimentalForceLongPolling: true
-        });
+        function inicializarFirebase() {
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                firebaseConectado = true;
+                actualizarStatusFirebase(true);
+                console.log("✅ Firebase conectado correctamente");
+                cargarDatosIniciales();
+            } catch (error) {
+                console.error("❌ Error al conectar Firebase:", error);
+                firebaseConectado = false;
+                actualizarStatusFirebase(false);
+            }
+        }
+
+        function actualizarStatusFirebase(conectado) {
+            let statusElement = document.getElementById("statusFirebase");
+            if (statusElement) {
+                if (conectado) {
+                    statusElement.className = "status-firebase conectado";
+                    statusElement.textContent = "🟢 Firebase Conectado";
+                } else {
+                    statusElement.className = "status-firebase desconectado";
+                    statusElement.textContent = "🔴 Firebase Desconectado";
+                }
+            }
+        }
+
+        function cargarDatosIniciales() {
+            if (!firebaseConectado || !db) return;
+
+            try {
+                onSnapshot(collection(db, "usuarios"), (snapshot) => {
+                    usuariosCuentas = {};
+                    snapshot.forEach(doc => { 
+                        let data = doc.data();
+                        data.id = doc.id;
+                        usuariosCuentas[doc.id] = data; 
+                    });
+                    actualizarTablaAprobaciones();
+                });
+
+                onSnapshot(collection(db, "congregacion"), (snapshot) => {
+                    listaCongregacion = [];
+                    snapshot.forEach(doc => {
+                        let d = doc.data(); 
+                        d.id = doc.id;
+                        listaCongregacion.push(d);
+                    });
+                    actualizarTablasYDesplegables();
+                });
+            } catch (error) {
+                console.error("❌ Error al cargar datos de Firebase:", error);
+            }
+        }
 
         let rolActual = "";
         let listaCongregacion = [];
         let usuariosCuentas = {};
 
         window.addEventListener("DOMContentLoaded", () => {
-            onSnapshot(collection(db, "usuarios"), (snapshot) => {
-                usuariosCuentas = {};
-                snapshot.forEach(doc => { 
-                    let data = doc.data();
-                    data.id = doc.id;
-                    usuariosCuentas[doc.id] = data; 
-                });
-                actualizarTablaAprobaciones();
-            });
-
-            onSnapshot(collection(db, "congregacion"), (snapshot) => {
-                listaCongregacion = [];
-                snapshot.forEach(doc => {
-                    let d = doc.data(); d.id = doc.id;
-                    listaCongregacion.push(d);
-                });
-                actualizarTablasYDesplegables();
-            });
+            inicializarFirebase();
 
             if(localStorage.getItem("sesion_rol")) {
                 rolActual = localStorage.getItem("sesion_rol");
@@ -393,15 +433,27 @@
         }
 
         window.aprobarUsuario = async function(id) {
+            if(!firebaseConectado) { alert("Firebase no está conectado"); return; }
             if(confirm(`¿Deseas autorizar al usuario "${id}"?`)) {
-                await setDoc(doc(db, "usuarios", id), { estado: "aprobado", rol: "siervo" }, { merge: true });
-                alert("Usuario aprobado.");
+                try {
+                    await setDoc(doc(db, "usuarios", id), { estado: "aprobado", rol: "siervo" }, { merge: true });
+                    alert("Usuario aprobado.");
+                } catch (error) {
+                    console.error("Error al aprobar usuario:", error);
+                    alert("Error al aprobar usuario: " + error.message);
+                }
             }
         }
 
         window.rechazarUsuario = async function(id) {
+            if(!firebaseConectado) { alert("Firebase no está conectado"); return; }
             if(confirm(`¿Eliminar solicitud de "${id}"?`)) {
-                await deleteDoc(doc(db, "usuarios", id));
+                try {
+                    await deleteDoc(doc(db, "usuarios", id));
+                } catch (error) {
+                    console.error("Error al rechazar usuario:", error);
+                    alert("Error al rechazar usuario: " + error.message);
+                }
             }
         }
 
@@ -439,12 +491,20 @@
 
         window.procesarRegistro = async function(e) {
             e.preventDefault();
+            if(!firebaseConectado) { alert("Firebase no está conectado"); return; }
+            
             let u = document.getElementById("reg-user").value.trim().toLowerCase();
             let n = document.getElementById("reg-nombre").value.trim();
             let p = document.getElementById("reg-pass").value;
-            await setDoc(doc(db, "usuarios", u), { nombre: n, clave: p, rol: "siervo", estado: "pendiente" });
-            alert("Solicitud enviada. Pídele al administrador principal que apruebe tu usuario.");
-            irALogin();
+            
+            try {
+                await setDoc(doc(db, "usuarios", u), { nombre: n, clave: p, rol: "siervo", estado: "pendiente" });
+                alert("Solicitud enviada. Pídele al administrador principal que apruebe tu usuario.");
+                irALogin();
+            } catch (error) {
+                console.error("Error al registrar usuario:", error);
+                alert("Error al registrar: " + error.message);
+            }
         }
 
         function mostrarAplicacion() {
@@ -461,6 +521,8 @@
 
         window.agregarPersonaFirebase = async function(e) {
             e.preventDefault();
+            if(!firebaseConectado) { alert("Firebase no está conectado"); return; }
+            
             let nombre = document.getElementById("new-nombre").value.trim();
             let genero = document.getElementById("new-genero").value;
             let nombramiento = document.getElementById("new-nombramiento").value;
@@ -475,11 +537,28 @@
             if(document.getElementById("chk-micros").checked) roles.push("micros");
 
             let id = nombre.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase();
-            await setDoc(doc(db, "congregacion", id), { nombre, genero, nombramiento, ejemplar, roles });
-            document.getElementById("formNuevaPersona").reset();
+            
+            try {
+                await setDoc(doc(db, "congregacion", id), { nombre, genero, nombramiento, ejemplar, roles });
+                document.getElementById("formNuevaPersona").reset();
+                alert("Miembro añadido exitosamente");
+            } catch (error) {
+                console.error("Error al añadir persona:", error);
+                alert("Error al añadir: " + error.message);
+            }
         }
 
-        window.eliminarPersona = async function(id) { if(confirm("¿Eliminar miembro?")) await deleteDoc(doc(db, "congregacion", id)); }
+        window.eliminarPersona = async function(id) { 
+            if(!firebaseConectado) { alert("Firebase no está conectado"); return; }
+            if(confirm("¿Eliminar miembro?")) {
+                try {
+                    await deleteDoc(doc(db, "congregacion", id));
+                } catch (error) {
+                    console.error("Error al eliminar persona:", error);
+                    alert("Error al eliminar: " + error.message);
+                }
+            }
+        }
 
         function actualizarTablasYDesplegables() {
             let tbody = document.querySelector("#tablaHermanos tbody");
@@ -525,6 +604,8 @@
         }
 
         window.guardarProgramaFirebase = async function(tipo) {
+            if(!firebaseConectado) { alert("Firebase no está conectado"); return; }
+            
             let fecha = tipo === 'entre-semana' ? document.getElementById("fecha-entre-semana").value : document.getElementById("fecha-fin-semana").value;
             if(!fecha) return alert("Selecciona una fecha primero");
 
@@ -557,42 +638,49 @@
                 alert("¡Programa guardado correctamente en Firebase!");
                 actualizarVistaImpresion(tipo, fecha, datos);
             } catch(e) {
-                console.error(e);
-                alert("Error al guardar en la base de datos.");
+                console.error("Error al guardar programa:", e);
+                alert("Error al guardar en la base de datos: " + e.message);
             }
         }
 
         window.cargarProgramaPorFecha = async function(tipo, fecha) {
+            if(!firebaseConectado) { alert("Firebase no está conectado"); return; }
             if(!fecha) return;
-            let docRef = doc(db, "programas_" + tipo, fecha);
-            let res = await getDoc(docRef);
+            
+            try {
+                let docRef = doc(db, "programas_" + tipo, fecha);
+                let res = await getDoc(docRef);
 
-            if(res.exists()) {
-                let d = res.data();
-                if(tipo === 'entre-semana') {
-                    document.getElementById("sel-presidente").value = d.presidente || "";
-                    document.getElementById("sel-lector").value = d.lector || "";
-                    document.getElementById("sel-estudiante").value = d.estudiante || "";
-                    document.getElementById("chk-activar-auxiliar").checked = d.usaAuxiliar || false;
-                    toggleSalaAuxiliarVisual(d.usaAuxiliar || false);
-                    document.getElementById("sel-consejero-aux").value = d.consejeroAux || "";
-                    document.getElementById("sel-estudiante-aux").value = d.estudianteAux || "";
-                    document.getElementById("sel-especial").value = d.especial || "";
-                    document.getElementById("sel-acomodador").value = d.acomodador || "";
-                    document.getElementById("sel-microfonos").value = d.microfonos || "";
+                if(res.exists()) {
+                    let d = res.data();
+                    if(tipo === 'entre-semana') {
+                        document.getElementById("sel-presidente").value = d.presidente || "";
+                        document.getElementById("sel-lector").value = d.lector || "";
+                        document.getElementById("sel-estudiante").value = d.estudiante || "";
+                        document.getElementById("chk-activar-auxiliar").checked = d.usaAuxiliar || false;
+                        toggleSalaAuxiliarVisual(d.usaAuxiliar || false);
+                        document.getElementById("sel-consejero-aux").value = d.consejeroAux || "";
+                        document.getElementById("sel-estudiante-aux").value = d.estudianteAux || "";
+                        document.getElementById("sel-especial").value = d.especial || "";
+                        document.getElementById("sel-acomodador").value = d.acomodador || "";
+                        document.getElementById("sel-microfonos").value = d.microfonos || "";
+                    } else {
+                        document.getElementById("fds-bosquejo").value = d.bosquejo || "1";
+                        document.getElementById("fds-titulo").value = d.titulo || "";
+                        document.getElementById("fds-orador").value = d.orador || "";
+                        document.getElementById("fds-origen").value = d.origen || "Local";
+                        document.getElementById("sel-conductor").value = d.conductor || "";
+                        document.getElementById("sel-lector-atalaya").value = d.lectorAtalaya || "";
+                    }
+                    actualizarVistaImpresion(tipo, fecha, d);
                 } else {
-                    document.getElementById("fds-bosquejo").value = d.bosquejo || "1";
-                    document.getElementById("fds-titulo").value = d.titulo || "";
-                    document.getElementById("fds-orador").value = d.orador || "";
-                    document.getElementById("fds-origen").value = d.origen || "Local";
-                    document.getElementById("sel-conductor").value = d.conductor || "";
-                    document.getElementById("sel-lector-atalaya").value = d.lectorAtalaya || "";
+                    limpiarFormularioPrograma(tipo);
                 }
-                actualizarVistaImpresion(tipo, fecha, d);
-            } else {
-                limpiarFormularioPrograma(tipo);
+                analizarConflictos();
+            } catch (error) {
+                console.error("Error al cargar programa:", error);
+                alert("Error al cargar programa: " + error.message);
             }
-            analizarConflictos();
         }
 
         function limpiarFormularioPrograma(tipo) {
