@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor Teocrático Pro en Línea</title>
+    <style>
+        :root {
+            --bg-principal: #f7fafc;
+            --bg-tarjeta: #ffffff;
+            --texto-principal: #2d3748;
+            --texto-secundario: #718096;
+            --borde: #e2e8f0;
+            --color-acento: #1a365d;
+            --color-botones: #2b6cb0;
+            --success: #38a169;
+            --danger: #e53e3e;
+            --warning: #dd6b20;
+        }
+
+        [data-theme="dark"] {
+            --bg-principal: #1a202c;
+            --bg-tarjeta: #2d3748;
+            --texto-principal: #edf2f7;
+            --texto-secundario: #a0aec0;
+            --borde: #4a5568;
+            --color-acento: #90cdf4;
+            --color-botones: #4299e1;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+        body { background-color: var(--bg-principal); color: var(--texto-principal); transition: background 0.3s, color 0.3s; padding-bottom: 50px; }
+        header { background-color: var(--color-acento); color: white; padding: 15px; text-align: center; }
+        [data-theme="dark"] header { background-color: #1a202c; border-bottom: 1px solid var(--borde); }
+        
+        .user-badge { background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 4px; font-size: 12px; display: inline-block; margin-top: 5px; }
+        .top-controls { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-tarjeta); border-bottom: 1px solid var(--borde); }
+        
+        nav { display: flex; flex-wrap: wrap; background-color: #2d3748; }
+        nav button { flex: 1; min-width: 120px; background: none; border: none; color: #cbd5e0; padding: 12px; cursor: pointer; font-weight: 600; font-size: 14px; }
+        nav button.active { background-color: var(--color-botones); color: white; }
+
+        .container { max-width: 1000px; margin: 20px auto; padding: 0 15px; }
+        .card { background: var(--bg-tarjeta); border: 1px solid var(--borde); border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .login-card { max-width: 400px; margin: 60px auto; padding: 30px; text-align: center; }
+        
+        h2 { font-size: 18px; margin-bottom: 15px; color: var(--color-botones); border-bottom: 2px solid var(--borde); padding-bottom: 5px; }
+        h3 { font-size: 15px; margin: 15px 0 10px 0; color: var(--texto-principal); padding-bottom: 3px; border-bottom: 1px dashed var(--borde); }
+        
+        .form-group { margin-bottom: 15px; text-align: left; }
+        label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 14px; }
+        input, select, textarea { width: 100%; padding: 10px; border: 1px solid var(--borde); border-radius: 6px; background: var(--bg-tarjeta); color: var(--texto-principal); font-size: 14px; }
+        
+        .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; }
+        .btn { background-color: var(--color-botones); color: white; padding: 10px 15px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; }
+        .btn-success { background-color: var(--success); }
+        .btn-danger { background-color: var(--danger); }
+        .btn-link { background: none; color: var(--color-botones); border: none; text-decoration: underline; cursor: pointer; margin-top: 15px; }
+
+        .alert-box { background-color: #fffaf0; border: 1px solid #feebc8; color: #dd6b20; padding: 12px; border-radius: 6px; margin-bottom: 15px; display: none; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        #app-body, #section-register { display: none; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th, td { padding: 10px; border-bottom: 1px solid var(--borde); text-align: left; }
+        th { background: rgba(0,0,0,0.05); }
+
+        .badge-tipo { padding: 3px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; color: white; }
+        .badge-anciano { background-color: #805ad5; }
+        .badge-sm { background-color: #3182ce; }
+        .badge-pub { background-color: #319795; }
+        .badge-pub-no { background-color: #dd6b20; }
+        .badge-hermana { background-color: #b83280; }
+        .badge-ejemplar { background-color: #d69e2e; margin-left: 5px; }
+
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white; color: black; padding: 0; }
+            #printArea { display: block !important; width: 100%; }
+            .print-page { page-break-after: always; padding: 20mm; }
+            table { border: 1px solid #cbd5e0; margin-bottom: 20px; }
+            th, td { border: 1px solid #cbd5e0; padding: 6px; }
+        }
+        #printArea { display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="top-controls no-print">
+        <button onclick="alternarModoOscuro()">🌓 Cambiar Modo</button>
+        <button id="btnCerrarSesion" onclick="cerrarSesion()" style="display:none;">🔒 Cerrar Sesión</button>
+    </div>
+
+    <div id="section-login" class="container no-print">
+        <div class="card login-card">
+            <h1>Acceso al Sistema</h1>
+            <p style="color:var(--texto-secundario); font-size:14px; margin-bottom:20px;">Introduce tus credenciales autorizadas</p>
+            <form id="formLogin" onsubmit="procesarLogin(event)">
+                <div class="form-group"><label>Usuario</label><input type="text" id="login-user" required></div>
+                <div class="form-group"><label>Contraseña</label><input type="password" id="login-pass" required></div>
+                <p id="error-login" style="color:var(--danger); font-size:13px; display:none; font-weight:bold; margin-bottom: 10px;"></p>
+                <button type="submit" class="btn">Ingresar al Sistema</button>
+            </form>
+            <button class="btn-link" onclick="irARegistro()">¿No tienes cuenta? Regístrate aquí</button>
+        </div>
+    </div>
+
+    <div id="section-register" class="container no-print">
+        <div class="card login-card">
+            <h1 style="color:var(--success);">Crear tu Usuario</h1>
+            <form id="formRegister" onsubmit="procesarRegistro(event)">
+                <div class="form-group"><label>Usuario sugerido</label><input type="text" id="reg-user" required></div>
+                <div class="form-group"><label>Nombre Completo</label><input type="text" id="reg-nombre" required></div>
+                <div class="form-group"><label>Contraseña</label><input type="password" id="reg-pass" required></div>
+                <button type="submit" class="btn btn-success">Enviar Solicitud</button>
+            </form>
+            <button class="btn-link" onclick="irALogin()">Volver al Inicio</button>
+        </div>
+    </div>
+
+    <div id="app-body">
+        <header class="no-print">
+            <h1>Gestor de Asignaciones Inteligente</h1>
+            <div class="user-badge" id="displayRol">Rol Actual: Buscando...</div>
+        </header>
+
+        <nav class="no-print">
+            <button class="nav-btn active" onclick="switchTab('tab-entre-semana')">Entre Semana</button>
+            <button class="nav-btn" onclick="switchTab('tab-fin-semana')">Fin de Semana</button>
+            <button class="nav-btn" id="nav-db" onclick="switchTab('tab-base-datos')">Base de Datos</button>
+            <button class="nav-btn" onclick="previsualizarEImprimir()">Imprimir A4 / PDF</button>
+        </nav>
+
+        <div class="container no-print">
+            <div id="alertaConflictos" class="alert-box">
+                <strong>⚠️ Alerta de Conflicto:</strong>
+                <ul id="listaConflictos" style="margin-left:20px; font-size:13px;"></ul>
+            </div>
+
+            <div class="card" id="panel-aprobaciones" style="border: 2px solid var(--warning); display:none; background-color: #fffaf0;">
+                <h2 style="color:var(--warning); border-bottom-color: var(--warning);">🔔 Solicitudes de Registro Pendientes</h2>
+                <table id="tablaAprobaciones">
+                    <thead><tr><th>Usuario</th><th>Nombre Completo</th><th>Acciones</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div id="tab-entre-semana" class="tab-content active">
+                <div class="card permiso-programa">
+                    <h2>Asignación de Personal (Entre Semana)</h2>
+                    <div class="form-group"><label>Fecha de la Reunión</label><input type="date" id="fecha-entre-semana" onchange="cargarProgramaPorFecha('entre-semana', this.value)"></div>
+                    
+                    <h3>Sección de Presidencia y Biblia</h3>
+                    <div class="grid-2">
+                        <div class="form-group"><label>Presidente (Estrictamente Ancianos)</label><select id="sel-presidente" onchange="analizarConflictos()"></select></div>
+                        <div class="form-group"><label>Lectura de la Biblia (Cualquier Varón Bautizado)</label><select id="sel-lector" onchange="analizarConflictos()"></select></div>
+                    </div>
+
+                    <h3>Sala Principal (Estudiantes)</h3>
+                    <div class="grid-2">
+                        <div class="form-group"><label>Estudiante Principal</label><select id="sel-estudiante" onchange="analizarConflictos()"></select></div>
+                    </div>
+
+                    <div style="margin: 15px 0; background: rgba(0,0,0,0.02); padding: 10px; border-radius: 6px;">
+                        <label style="display:flex; align-items:center; gap:8px;">
+                            <input type="checkbox" id="chk-activar-auxiliar" onchange="toggleSalaAuxiliarVisual(this.checked)"> 
+                            <strong>¿Habilitar Sala Auxiliar para esta reunión?</strong>
+                        </label>
+                    </div>
+
+                    <div id="subseccion-sala-auxiliar" style="display:none; border-left: 4px solid var(--color-botones); padding-left: 15px; margin-bottom: 15px;">
+                        <h3>Sala Auxiliar</h3>
+                        <div class="grid-2">
+                            <div class="form-group"><label>Consejero Auxiliar (Anciano / SM)</label><select id="sel-consejero-aux" onchange="analizarConflictos()"></select></div>
+                            <div class="form-group"><label>Estudiante Auxiliar</label><select id="sel-estudiante-aux" onchange="analizarConflictos()"></select></div>
+                        </div>
+                    </div>
+
+                    <h3>Sección: Nuestra Vida Cristiana</h3>
+                    <div class="grid-2">
+                        <div class="form-group"><label>Parte de Vida Cristiana (Ancianos / SM)</label><select id="sel-especial" onchange="analizarConflictos()"></select></div>
+                    </div>
+
+                    <h3>Logística del Salón</h3>
+                    <div class="grid-2">
+                        <div class="form-group"><label>Acomodador</label><select id="sel-acomodador" onchange="analizarConflictos()"></select></div>
+                        <div class="form-group"><label>Micrófonos</label><select id="sel-microfonos" onchange="analizarConflictos()"></select></div>
+                    </div>
+                    <button class="btn btn-success" onclick="guardarProgramaFirebase('entre-semana')" style="margin-top:15px;">Guardar Cambios Entre Semana</button>
+                </div>
+            </div>
+
+            <div id="tab-fin-semana" class="tab-content">
+                <div class="card permiso-programa">
+                    <h2>Programa de Fin de Semana</h2>
+                    <div class="form-group"><label>Fecha</label><input type="date" id="fecha-fin-semana" onchange="cargarProgramaPorFecha('fin-semana', this.value)"></div>
+                    
+                    <h3>Discurso Público</h3>
+                    <div class="grid-2">
+                        <div class="form-group"><label>Nº Bosquejo</label><input type="number" id="fds-bosquejo" value="1"></div>
+                        <div class="form-group"><label>Título del Discurso</label><input type="text" id="fds-titulo"></div>
+                        <div class="form-group"><label>Orador / Discursante</label><input type="text" id="fds-orador"></div>
+                        <div class="form-group"><label>Congregación de Origen</label><input type="text" id="fds-origen" value="Local"></div>
+                    </div>
+                    
+                    <h3>Dirección y Estudio de La Atalaya</h3>
+                    <div class="grid-2">
+                        <div class="form-group"><label>Presidente / Conductor FDS (Cualquier Varón Bautizado)</label><select id="sel-conductor" onchange="analizarConflictos()"></select></div>
+                        <div class="form-group"><label>Lector Atalaya (Cualquier Varón Bautizado)</label><select id="sel-lector-atalaya" onchange="analizarConflictos()"></select></div>
+                    </div>
+                    <button class="btn btn-success" onclick="guardarProgramaFirebase('fin-semana')" style="margin-top:15px;">Guardar Cambios Fin de Semana</button>
+                </div>
+            </div>
+
+            <div id="tab-base-datos" class="tab-content">
+                <div class="card permiso-personas">
+                    <h2>Añadir Nuevo Miembro a la Congregación</h2>
+                    <form id="formNuevaPersona" onsubmit="agregarPersonaFirebase(event)">
+                        <div class="grid-2">
+                            <div class="form-group"><label>Nombre Completo</label><input type="text" id="new-nombre" required></div>
+                            <div class="form-group"><label>Género</label>
+                                <select id="new-genero" required onchange="adaptarNombramientosPorGenero(this.value)">
+                                    <option value="V">Varón</option><option value="M">Mujer</option>
+                                </select>
+                            </div>
+                            <div class="form-group"><label>Nombramiento / Perfil Teocrático</label>
+                                <select id="new-nombramiento" required>
+                                    <option value="anciano">Anciano</option>
+                                    <option value="sm">Siervo Ministerial</option>
+                                    <option value="pub-bautizado" selected>Publicador Bautizado</option>
+                                    <option value="pub-no-bautizado">Publicador NO Bautizado</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="margin:10px 0; display: flex; gap: 20px; align-items: center;">
+                            <label><input type="checkbox" id="chk-ejemplar"> ⭐ <strong>¿Es Publicador Ejemplar?</strong> (Permite excepciones)</label>
+                        </div>
+                        <div style="margin:10px 0; font-size:13px; font-weight:bold;">Habilitar Privilegios Específicos:</div>
+                        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap:10px; background:rgba(0,0,0,0.02); padding:10px; border-radius:6px;">
+                            <label><input type="checkbox" id="chk-presi"> Presidente</label>
+                            <label><input type="checkbox" id="chk-lector"> Lector Biblia</label>
+                            <label><input type="checkbox" id="chk-estudiante"> Estudiante</label>
+                            <label><input type="checkbox" id="chk-discursante"> Discursos</label>
+                            <label><input type="checkbox" id="chk-acomodador"> Acomodador</label>
+                            <label><input type="checkbox" id="chk-micros"> Micrófonos</label>
+                        </div>
+                        <button type="submit" class="btn" style="margin-top:15px;">Añadir a la Base de Datos</button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h2>Lista de la Congregación</h2>
+                    <table id="tablaHermanos"><thead><tr><th>Nombre</th><th>Género</th><th>Nombramiento</th><th>Acción</th></tr></thead><tbody></tbody></table>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Impresión</h2>
+                <button class="btn btn-success" onclick="window.print()">🖨️ Guardar PDF / Imprimir A4</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="printArea">
+        <div class="print-page">
+            <h1 style="text-align:center; font-size:22px; margin-bottom:5px;">PROGRAMA REUNIÓN ENTRE SEMANA</h1>
+            <h3 style="text-align:center; margin-bottom:20px;" id="p-fecha-mvm">Fecha: --</h3>
+            <table>
+                <tr><th style="width:40%;">Asignación Principal</th><th style="width:60%;">Asignado</th></tr>
+                <tr><td><strong>Presidente de la Reunión</strong></td><td id="p-presidente">-</td></tr>
+                <tr><td><strong>Lectura de la Biblia</strong></td><td id="p-lector">-</td></tr>
+                <tr><td><strong>Estudiante (Sala Principal)</strong></td><td id="p-estudiante">-</td></tr>
+                <tr><td><strong>Parte de Vida Cristiana</strong></td><td id="p-especial">-</td></tr>
+            </table>
+            <div id="p-bloque-auxiliar" style="display:none;">
+                <table>
+                    <tr><th colspan="2" style="text-align:center; background:#edf2f7;">SALA AUXILIAR</th></tr>
+                    <tr><td style="width:40%;"><strong>Consejero Auxiliar</strong></td><td id="p-consejero-aux">-</td></tr>
+                    <tr><td><strong>Estudiante (Sala Auxiliar)</strong></td><td id="p-estudiante-aux">-</td></tr>
+                </table>
+            </div>
+            <table>
+                <tr><th colspan="2" style="text-align:center; background:#edf2f7;">LOGÍSTICA</th></tr>
+                <tr><td style="width:40%;"><strong>Acomodador de Turno</strong></td><td id="p-acomodador">-</td></tr>
+                <tr><td><strong>Encargado de Micrófonos</strong></td><td id="p-microfonos">-</td></tr>
+            </table>
+        </div>
+
+        <div class="print-page">
+            <h1 style="text-align:center; font-size:22px; margin-bottom:5px;">PROGRAMA REUNIÓN FIN DE SEMANA</h1>
+            <h3 style="text-align:center; margin-bottom:20px;" id="p-fecha-fds">Fecha: --</h3>
+            <table>
+                <tr><th style="width:40%;">Discurso Público</th><th style="width:60%;">Detalles</th></tr>
+                <tr><td><strong>Tema / Bosquejo</strong></td><td id="p-fds-discurso">-</td></tr>
+                <tr><td><strong>Conferenciante Orador</strong></td><td id="p-fds-orador">-</td></tr>
+                <tr><td><strong>Congregación</strong></td><td id="p-fds-origen">-</td></tr>
+                <tr><th colspan="2" style="text-align:center; background:#edf2f7;">DIRECCIÓN REUNIÓN</th></tr>
+                <tr><td><strong>Presidente / Conductor FDS</strong></td><td id="p-fds-conductor">-</td></tr>
+                <tr><td><strong>Lector de la Atalaya</strong></td><td id="p-fds-lector">-</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+        import { 
+            getFirestore, 
+            doc, 
+            setDoc, 
+            getDoc, 
+            collection, 
+            deleteDoc, 
+            onSnapshot 
+        } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDF5Fp5cPAgB6UpDv_oY7tvW0gitrVX2yg",
+            authDomain: "gestor-teocratico.firebaseapp.com",
+            projectId: "gestor-teocratico",
+            storageBucket: "gestor-teocratico.firebasestorage.app",
+            messagingSenderId: "152274665101",
+            appId: "1:152274665101:web:26eac7c50cbbb196da2cc4",
+            measurementId: "G-WGH3VLX99F"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let rolActual = "";
+        let listaCongregacion = [];
+        let usuariosCuentas = {};
+
+        window.addEventListener("DOMContentLoaded", () => {
+            onSnapshot(collection(db, "usuarios"), (snapshot) => {
+                usuariosCuentas = {};
+                snapshot.forEach(doc => { 
+                    let data = doc.data();
+                    data.id = doc.id;
+                    usuariosCuentas[doc.id] = data; 
+                });
+                actualizarTablaAprobaciones();
+            });
+
+            onSnapshot(collection(db, "congregacion"), (snapshot) => {
+                listaCongregacion = [];
+                snapshot.forEach(doc => {
+                    let d = doc.data(); d.id = doc.id;
+                    listaCongregacion.push(d);
+                });
+                actualizarTablasYDesplegables();
+            });
+
+            if(localStorage.getItem("sesion_rol")) {
+                rolActual = localStorage.getItem("sesion_rol");
+                mostrarAplicacion();
+            }
+        });
+
+        function actualizarTablaAprobaciones() {
+            let panel = document.getElementById("panel-aprobaciones");
+            let tbody = document.querySelector("#tablaAprobaciones tbody");
+            if (!tbody || !panel) return;
+
+            tbody.innerHTML = "";
+            let tienePendientes = false;
+
+            if (rolActual === "host") {
+                for (let id in usuariosCuentas) {
+                    let user = usuariosCuentas[id];
+                    if (user.estado === "pendiente") {
+                        tienePendientes = true;
+                        let tr = document.createElement("tr");
+                        tr.innerHTML = `
+                            <td><strong>${user.id}</strong></td>
+                            <td>${user.nombre}</td>
+                            <td>
+                                <button class="btn btn-success" style="padding:4px 10px; font-size:12px; width:auto; margin-right:5px;" onclick="aprobarUsuario('${user.id}')">✔️ Aprobar</button>
+                                <button class="btn btn-danger" style="padding:4px 10px; font-size:12px; width:auto;" onclick="rechazarUsuario('${user.id}')">❌ Rechazar</button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    }
+                }
+            }
+            panel.style.display = tienePendientes ? "block" : "none";
+        }
+
+        window.aprobarUsuario = async function(id) {
+            if(confirm(`¿Deseas autorizar al usuario "${id}"?`)) {
+                await setDoc(doc(db, "usuarios", id), { estado: "aprobado", rol: "siervo" }, { merge: true });
+                alert("Usuario aprobado.");
+            }
+        }
+
+        window.rechazarUsuario = async function(id) {
+            if(confirm(`¿Eliminar solicitud de "${id}"?`)) {
+                await deleteDoc(doc(db, "usuarios", id));
+            }
+        }
+
+        window.toggleSalaAuxiliarVisual = function(visible) {
+            document.getElementById("subseccion-sala-auxiliar").style.display = visible ? "block" : "none";
+        }
+
+        window.adaptarNombramientosPorGenero = function(genero) {
+            let s = document.getElementById("new-nombramiento");
+            if(genero === "M") {
+                s.innerHTML = `<option value="hermana-bautizada" selected>Hermana Bautizada</option><option value="hermana-no-bautizada">Hermana NO Bautizada</option>`;
+            } else {
+                s.innerHTML = `<option value="anciano">Anciano</option><option value="sm">Siervo Ministerial</option><option value="pub-bautizado" selected>Publicador Bautizado</option><option value="pub-no-bautizado">Publicador NO Bautizado</option>`;
+            }
+        }
+
+        window.irARegistro = function() { document.getElementById("section-login").style.display = "none"; document.getElementById("section-register").style.display = "block"; }
+        window.irALogin = function() { document.getElementById("section-register").style.display = "none"; document.getElementById("section-login").style.display = "block"; }
+
+        window.procesarLogin = function(e) {
+            e.preventDefault();
+            let u = document.getElementById("login-user").value.trim().toLowerCase();
+            let p = document.getElementById("login-pass").value;
+            let err = document.getElementById("error-login");
+
+            if((u === "admin" && p === "admin123") || (u === "victor" && p === "12345")) {
+                rolActual = "host"; localStorage.setItem("sesion_rol", "host"); mostrarAplicacion(); return;
+            }
+            
+            if(usuariosCuentas[u] && usuariosCuentas[u].clave === p) {
+                if(usuariosCuentas[u].estado === "pendiente") { err.innerText = "Cuenta en espera de aprobación."; err.style.display="block"; return; }
+                rolActual = usuariosCuentas[u].rol; localStorage.setItem("sesion_rol", rolActual); mostrarAplicacion();
+            } else { err.innerText = "Credenciales incorrectas"; err.style.display="block"; }
+        }
+
+        window.procesarRegistro = async function(e) {
+            e.preventDefault();
+            let u = document.getElementById("reg-user").value.trim().toLowerCase();
+            let n = document.getElementById("reg-nombre").value.trim();
+            let p = document.getElementById("reg-pass").value;
+            await setDoc(doc(db, "usuarios", u), { nombre: n, clave: p, rol: "siervo", estado: "pendiente" });
+            alert("Solicitud enviada. Pídele al administrador principal que apruebe tu usuario.");
+            irALogin();
+        }
+
+        function mostrarAplicacion() {
+            document.getElementById("section-login").style.display = "none";
+            document.getElementById("section-register").style.display = "none";
+            document.getElementById("app-body").style.display = "block";
+            document.getElementById("btnCerrarSesion").style.display = "block";
+            document.getElementById("displayRol").innerText = `Rol: ${rolActual.toUpperCase()}`;
+            aplicarPermisosVisuales();
+            actualizarTablaAprobaciones();
+        }
+
+        window.cerrarSesion = function() { localStorage.removeItem("sesion_rol"); location.reload(); }
+
+        window.agregarPersonaFirebase = async function(e) {
+            e.preventDefault();
+            let nombre = document.getElementById("new-nombre").value.trim();
+            let genero = document.getElementById("new-genero").value;
+            let nombramiento = document.getElementById("new-nombramiento").value;
+            let ejemplar = document.getElementById("chk-ejemplar").checked;
+            let roles = [];
+
+            if(document.getElementById("chk-presi").checked) roles.push("presi");
+            if(document.getElementById("chk-lector").checked) roles.push("lector");
+            if(document.getElementById("chk-estudiante").checked) roles.push("estudiante");
+            if(document.getElementById("chk-discursante").checked) roles.push("discursante");
+            if(document.getElementById("chk-acomodador").checked) roles.push("acomodador");
+            if(document.getElementById("chk-micros").checked) roles.push("micros");
+
+            let id = nombre.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase();
+            await setDoc(doc(db, "congregacion", id), { nombre, genero, nombramiento, ejemplar, roles });
+            document.getElementById("formNuevaPersona").reset();
+        }
+
+        window.eliminarPersona = async function(id) { if(confirm("¿Eliminar miembro?")) await deleteDoc(doc(db, "congregacion", id)); }
+
+        function actualizarTablasYDesplegables() {
+            let tbody = document.querySelector("#tablaHermanos tbody");
+            if(!tbody) return; tbody.innerHTML = "";
+            
+            listaCongregacion.forEach(p => {
+                let badge = `<span class="badge-tipo badge-${p.nombramiento}">${p.nombramiento.toUpperCase()}</span>`;
+                let badgeEj = p.ejemplar ? `<span class="badge-tipo badge-ejemplar">EJEMPLAR</span>` : '';
+                let tr = document.createElement("tr");
+                tr.innerHTML = `<td><b>${p.nombre}</b></td><td>${p.genero}</td><td>${badge}${badgeEj}</td><td><button class="btn btn-danger" style="padding:2px 5px; font-size:11px; width:auto;">X</button></td>`;
+                tr.querySelector("button").addEventListener("click", () => eliminarPersona(p.id));
+                tbody.appendChild(tr);
+            });
+
+            rellenarSelectFiltrado("sel-presidente", "presi", ["anciano"]); 
+            rellenarSelectFiltrado("sel-conductor", "presi", ["anciano", "sm", "pub-bautizado"], false, "V");  
+            rellenarSelectFiltrado("sel-consejero-aux", "presi", ["anciano", "sm"]); 
+            rellenarSelectFiltrado("sel-especial", "discursante", ["anciano", "sm"], true); 
+
+            rellenarSelectFiltrado("sel-lector", "lector", ["anciano", "sm", "pub-bautizado"], false, "V");
+            rellenarSelectFiltrado("sel-lector-atalaya", "lector", ["anciano", "sm", "pub-bautizado"], false, "V");
+            rellenarSelectFiltrado("sel-acomodador", "acomodador", ["anciano", "sm", "pub-bautizado"], false, "V");
+            rellenarSelectFiltrado("sel-microfonos", "micros", ["anciano", "sm", "pub-bautizado"], false, "V");
+
+            rellenarSelectFiltrado("sel-estudiante", "estudiante", ["anciano", "sm", "pub-bautizado", "pub-no-bautizado", "hermana-bautizada", "hermana-no-bautizada"]);
+            rellenarSelectFiltrado("sel-estudiante-aux", "estudiante", ["anciano", "sm", "pub-bautizado", "pub-no-bautizado", "hermana-bautizada", "hermana-no-bautizada"]);
+        }
+
+        function rellenarSelectFiltrado(idSelect, rolRequerido, nombramientosPermitidos, permitirEjemplares = false, genero = null) {
+            let s = document.getElementById(idSelect); if(!s) return;
+            s.innerHTML = '<option value="">-- Seleccionar --</option>';
+            
+            listaCongregacion.forEach(p => {
+                let cumpleRol = p.roles.includes(rolRequerido);
+                let cumpleNombramiento = nombramientosPermitidos.includes(p.nombramiento);
+                let cumpleExcepcion = permitirEjemplares && p.ejemplar;
+                let cumpleGenero = genero ? p.genero === genero : true;
+
+                if(cumpleRol && cumpleGenero && (cumpleNombramiento || cumpleExcepcion)) {
+                    s.innerHTML += `<option value="${p.nombre}">${p.nombre} (${p.nombramiento.toUpperCase()})</option>`;
+                }
+            });
+        }
+
+        window.guardarProgramaFirebase = async function(tipo) {
+            let fecha = tipo === 'entre-semana' ? document.getElementById("fecha-entre-semana").value : document.getElementById("fecha-fin-semana").value;
+            if(!fecha) return alert("Selecciona una fecha primero");
+
+            let datos = {};
+            if(tipo === 'entre-semana') {
+                datos = {
+                    presidente: document.getElementById("sel-presidente").value,
+                    lector: document.getElementById("sel-lector").value,
+                    estudiante: document.getElementById("sel-estudiante").value,
+                    usaAuxiliar: document.getElementById("chk-activar-auxiliar").checked,
+                    consejeroAux: document.getElementById("sel-consejero-aux").value,
+                    estudianteAux: document.getElementById("sel-estudiante-aux").value,
+                    especial: document.getElementById("sel-especial").value,
+                    acomodador: document.getElementById("sel-acomodador").value,
+                    microfonos: document.getElementById("sel-microfonos").value
+                };
+            } else {
+                datos = {
+                    bosquejo: document.getElementById("fds-bosquejo").value,
+                    titulo: document.getElementById("fds-titulo").value,
+                    orador: document.getElementById("fds-orador").value,
+                    origen: document.getElementById("fds-origen").value,
+                    conductor: document.getElementById("sel-conductor").value,
+                    lectorAtalaya: document.getElementById("sel-lector-atalaya").value
+                };
+            }
+
+            try {
+                await setDoc(doc(db, "programas_" + tipo, fecha), datos);
+                alert("¡Programa guardado correctamente en Firebase!");
+                actualizarVistaImpresion(tipo, fecha, datos);
+            } catch(e) {
+                console.error(e);
+                alert("Error al guardar en la base de datos.");
+            }
+        }
+
+        window.cargarProgramaPorFecha = async function(tipo, fecha) {
+            if(!fecha) return;
+            let docRef = doc(db, "programas_" + tipo, fecha);
+            let res = await getDoc(docRef);
+
+            if(res.exists()) {
+                let d = res.data();
+                if(tipo === 'entre-semana') {
+                    document.getElementById("sel-presidente").value = d.presidente || "";
+                    document.getElementById("sel-lector").value = d.lector || "";
+                    document.getElementById("sel-estudiante").value = d.estudiante || "";
+                    document.getElementById("chk-activar-auxiliar").checked = d.usaAuxiliar || false;
+                    toggleSalaAuxiliarVisual(d.usaAuxiliar || false);
+                    document.getElementById("sel-consejero-aux").value = d.consejeroAux || "";
+                    document.getElementById("sel-estudiante-aux").value = d.estudianteAux || "";
+                    document.getElementById("sel-especial").value = d.especial || "";
+                    document.getElementById("sel-acomodador").value = d.acomodador || "";
+                    document.getElementById("sel-microfonos").value = d.microfonos || "";
+                } else {
+                    document.getElementById("fds-bosquejo").value = d.bosquejo || "1";
+                    document.getElementById("fds-titulo").value = d.titulo || "";
+                    document.getElementById("fds-orador").value = d.orador || "";
+                    document.getElementById("fds-origen").value = d.origen || "Local";
+                    document.getElementById("sel-conductor").value = d.conductor || "";
+                    document.getElementById("sel-lector-atalaya").value = d.lectorAtalaya || "";
+                }
+                actualizarVistaImpresion(tipo, fecha, d);
+            } else {
+                limpiarFormularioPrograma(tipo);
+            }
+            analizarConflictos();
+        }
+
+        function limpiarFormularioPrograma(tipo) {
+            if(tipo === 'entre-semana') {
+                document.getElementById("sel-presidente").value = "";
+                document.getElementById("sel-lector").value = "";
+                document.getElementById("sel-estudiante").value = "";
+                document.getElementById("chk-activar-auxiliar").checked = false;
+                toggleSalaAuxiliarVisual(false);
+                document.getElementById("sel-consejero-aux").value = "";
+                document.getElementById("sel-estudiante-aux").value = "";
+                document.getElementById("sel-especial").value = "";
+                document.getElementById("sel-acomodador").value = "";
+                document.getElementById("sel-microfonos").value = "";
+            } else {
+                document.getElementById("fds-bosquejo").value = "1";
+                document.getElementById("fds-titulo").value = "";
+                document.getElementById("fds-orador").value = "";
+                document.getElementById("fds-origen").value = "Local";
+                document.getElementById("sel-conductor").value = "";
+                document.getElementById("sel-lector-atalaya").value = "";
+            }
+        }
+
+        function actualizarVistaImpresion(tipo, fecha, d) {
+            if(tipo === 'entre-semana') {
+                document.getElementById("p-fecha-mvm").innerText = "Fecha: " + fecha;
+                document.getElementById("p-presidente").innerText = d.presidente || "-";
+                document.getElementById("p-lector").innerText = d.lector || "-";
+                document.getElementById("p-estudiante").innerText = d.estudiante || "-";
+                document.getElementById("p-especial").innerText = d.especial || "-";
+                
+                let bAux = document.getElementById("p-bloque-auxiliar");
+                if(d.usaAuxiliar) {
+                    bAux.style.display = "block";
+                    document.getElementById("p-consejero-aux").innerText = d.consejeroAux || "-";
+                    document.getElementById("p-estudiante-aux").innerText = d.estudianteAux || "-";
+                } else {
+                    bAux.style.display = "none";
+                }
+                document.getElementById("p-acomodador").innerText = d.acomodador || "-";
+                document.getElementById("p-microfonos").innerText = d.microfonos || "-";
+            } else {
+                document.getElementById("p-fecha-fds").innerText = "Fecha: " + fecha;
+                document.getElementById("p-fds-discurso").innerText = d.bosquejo ? `Nº ${d.bosquejo} - ${d.titulo}` : "-";
+                document.getElementById("p-fds-orador").innerText = d.orador || "-";
+                document.getElementById("p-fds-origen").innerText = d.origen || "-";
+                document.getElementById("p-fds-conductor").innerText = d.conductor || "-";
+                document.getElementById("p-fds-lector").innerText = d.lectorAtalaya || "-";
+            }
+        }
+
+        window.analizarConflictos = function() {
+            let lista = document.getElementById("listaConflictos");
+            let alerta = document.getElementById("alertaConflictos");
+            if(!lista || !alerta) return;
+
+            lista.innerHTML = "";
+            let asignados = [];
+
+            let inputs = [
+                "sel-presidente", "sel-lector", "sel-estudiante", 
+                "sel-consejero-aux", "sel-estudiante-aux", "sel-especial", 
+                "sel-acomodador", "sel-microfonos", "sel-conductor", "sel-lector-atalaya"
+            ];
+
+            inputs.forEach(id => {
+                let elem = document.getElementById(id);
+                if(elem && elem.value) asignados.push(elem.value);
+            });
+
+            let duplicados = asignados.filter((item, index) => asignados.indexOf(item) !== index);
+            let unicosDuplicados = [...new Set(duplicados)];
+
+            unicosDuplicados.forEach(nombre => {
+                let li = document.createElement("li");
+                li.innerText = `El hermano "${nombre}" tiene más de una asignación en la misma reunión.`;
+                lista.appendChild(li);
+            });
+
+            alerta.style.display = unicosDuplicados.length > 0 ? "block" : "none";
+        }
+
+        window.switchTab = function(tabId) {
+            document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
+            document.querySelectorAll(".nav-btn").forEach(el => el.classList.remove("active"));
+            
+            document.getElementById(tabId).classList.add("active");
+            if (event && event.currentTarget) {
+                event.currentTarget.classList.add("active");
+            }
+        }
+
+        function aplicarPermisosVisuales() {
+            if(rolActual === "siervo") {
+                document.querySelectorAll(".permiso-programa input, .permiso-programa select").forEach(el => el.disabled = true);
+                document.querySelectorAll(".permiso-programa button").forEach(el => el.style.display = "none");
+                document.getElementById("nav-db").style.display = "none";
+            } else {
+                document.querySelectorAll(".permiso-programa input, .permiso-programa select").forEach(el => el.disabled = false);
+                document.querySelectorAll(".permiso-programa button").forEach(el => el.style.display = "block");
+                document.getElementById("nav-db").style.display = "block";
+            }
+        }
+
+        window.alternarModoOscuro = function() {
+            let current = document.documentElement.getAttribute("data-theme");
+            document.documentElement.setAttribute("data-theme", current === "dark" ? "light" : "dark");
+        }
+
+        window.previsualizarEImprimir = function() {
+            window.print();
+        }
+    </script>
+</body>
+</html>
